@@ -82,15 +82,21 @@ def parse_doc_responsibility(text):
 
 def snap_to_document(val, doc_amounts):
     """
-    If val is not in the document's known amounts, find the closest
-    document amount within 1% (min $1) and return it instead.
-    Returns val unchanged if already correct or no close match found.
+    If val is not in the document's known amounts:
+    1. Try x1000 rescale (catches 2.85 → 2850 style thousands-separator bugs)
+    2. Snap to nearest document amount within 1% tolerance (min $1)
+    Returns val unchanged if no correction found.
     """
     if val is None:
         return val
     rounded = round(val, 2)
     if rounded in doc_amounts:
         return val
+    # Try x1000 rescale — model wrote 2.85 meaning 2850
+    scaled = round(val * 1000, 2)
+    if scaled in doc_amounts:
+        return scaled
+    # Tolerance snap for small reading errors (e.g. 2840 → 2850)
     tolerance = max(1.0, val * 0.01)
     close = [a for a in doc_amounts if abs(a - val) <= tolerance]
     if close:
@@ -147,7 +153,7 @@ Document:
 
 Return ONLY a valid JSON object with this exact structure. No markdown fences, no explanation, just the raw JSON:
 {{
-  "document_type": "medical_bill",
+  "document_type": "one of: medical_bill, eob, unknown",
   "summary": "2-3 sentence plain English summary of what this document is and what action is required",
   "patient_responsibility": {{
     "amount": 0.00,
@@ -187,6 +193,7 @@ Rules:
 - Use null for missing numeric values, not 0
 - flags array should be empty [] only if truly no issues exist
 - Be specific — use actual dollar amounts and codes from the document
+- document_type must be exactly "medical_bill" (a provider's bill or statement), "eob" (an insurer's Explanation of Benefits, often marked "This is not a bill"), or "unknown"
 - If the document doesn't look like a medical bill or EOB, set document_type to "unknown" and explain in summary
 - Output raw JSON only — no markdown, no ```json fences, no explanation before or after"""
 
@@ -239,6 +246,7 @@ def analyze_bill():
         response = ollama.chat(
             model=MODEL,
             format="json",
+            options={"temperature": 0},
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": ANALYSIS_PROMPT.format(document_text=document_text)},
