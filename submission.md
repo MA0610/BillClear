@@ -166,6 +166,8 @@ The first step — reliable single-bill analysis — is the prerequisite for eve
 
 **AI tools used:** Claude Code (Anthropic) for scaffolding and writing the majority of the code. I reviewed all generated code, iterated on the analysis prompt through multiple test runs, verified that sample data produced the expected flags, and tested edge cases manually.
 
+**What I did myself:** I designed the system architecture — a local model behind a Flask API with a React frontend, so no medical data leaves the user's machine — along with the problem framing, solution direction, and prompt design. I also directed the testing and validation work, including deciding which issues to fix.
+
 **What I checked:** Every component was run in the browser. The analysis prompt was tested against both sample documents and invalid inputs before finalizing. The duplicate charge detection was specifically verified — it was the core hypothesis of the prototype.
 
 On top of manual testing, a 104-test pytest suite covers the amount-parsing, amount-validation, and flag-validation logic (78 tests, no model needed) and runs both text samples end-to-end through the real model (26 tests), checking document type, patient responsibility, per-line amounts, the denied charge, and flags. The suite caught two real bugs: the model labeling the EOB as a medical bill, and the $516 claim total being shown as the ER visit's "you owe" instead of $342.

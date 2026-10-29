@@ -237,4 +237,4 @@ OLLAMA_MODEL=llama3.1:8b python app.py
 
 ## AI usage
 
-Claude Code was used to scaffold and write the majority of the frontend and backend code. I reviewed all output, iterated on the prompt to produce consistent structured JSON, verified sample data produced the expected flags, and tested edge cases manually. Model output is checked by an automated pytest suite (see [Running tests](#running-tests)). The problem framing, solution direction, and prompt design are my own.
+Claude Code was used to scaffold and write the majority of the frontend and backend code. I reviewed all output, iterated on the prompt to produce consistent structured JSON, verified sample data produced the expected flags, and tested edge cases manually. Model output is checked by an automated pytest suite (see [Running tests](#running-tests)). The problem framing, solution direction, system architecture, and prompt design are my own, and I directed the testing and validation work, including deciding which issues to fix.
