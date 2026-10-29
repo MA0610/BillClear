@@ -413,6 +413,12 @@ body {
   color: var(--gray-900);
 }
 
+.results-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .reset-btn {
   font-size: 13px;
   font-weight: 500;
@@ -426,6 +432,20 @@ body {
 }
 
 .reset-btn:hover { border-color: var(--gray-400); color: var(--gray-700); }
+
+.export-btn {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--blue);
+  background: var(--blue-light);
+  border: 1px solid var(--blue-border);
+  border-radius: 7px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.export-btn:hover { background: #dbeafe; }
 
 /* Summary card */
 .summary-card {
@@ -788,4 +808,56 @@ body {
   .header-inner .tagline { display: none; }
   .header-inner .privacy-badge { display: none; }
   .hero h1 { font-size: 24px; }
+}
+
+/* ── Print / PDF export ── */
+@media print {
+  @page { margin: 20mm; }
+
+  /* Hide everything except results */
+  .header, .hero, .upload-card, .loading-card,
+  .results-actions, .copy-btn, .analysis-meta,
+  .footer { display: none !important; }
+
+  body { background: white; font-size: 12px; }
+
+  .main { padding: 0; max-width: 100%; }
+
+  /* Print header */
+  .results-header { margin-bottom: 16px; }
+  .results-header h2::before {
+    content: "BillClear — Medical Bill Analysis";
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: #000;
+    margin-bottom: 4px;
+  }
+  .results-header h2 { font-size: 13px; color: #555; font-weight: 400; }
+
+  /* Remove shadows and round corners for print */
+  .summary-card, .section-card, .savings-banner, .unknown-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    break-inside: avoid;
+  }
+
+  /* Keep savings banner readable in B&W */
+  .savings-banner { background: #f0fff4 !important; }
+  .savings-amount { font-size: 22px !important; }
+
+  /* Keep duplicate rows visible in B&W */
+  .row-duplicate td { background: #fffbeb !important; }
+  .duplicate-tag { border: 1px solid #aaa !important; }
+
+  /* Table */
+  .charges-table th, .charges-table td { padding: 8px 12px; }
+
+  /* Corrected amount */
+  .corrected-value { color: #166534 !important; }
+
+  /* Flag dots */
+  .flag-dot.warning { background: #d97706 !important; }
+  .flag-dot.info    { background: #2563eb !important; }
 }

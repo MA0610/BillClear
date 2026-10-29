@@ -96,9 +96,14 @@ export default function AnalysisResults({ data, onReset }) {
     <>
       <div className="results-header">
         <h2>Analysis complete</h2>
-        <button className="reset-btn" onClick={onReset}>
-          ← Analyze another
-        </button>
+        <div className="results-actions">
+          <button className="export-btn" onClick={() => window.print()}>
+            ↓ Save as PDF
+          </button>
+          <button className="reset-btn" onClick={onReset}>
+            ← Analyze another
+          </button>
+        </div>
       </div>
 
       {/* Potential savings banner */}
