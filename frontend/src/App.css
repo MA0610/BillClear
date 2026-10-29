@@ -671,6 +671,23 @@ body {
 
 .list-section li:last-child { margin-bottom: 0; }
 
+/* ── Analysis metadata ── */
+.analysis-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 0 8px;
+}
+
+.meta-chip {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
 /* Footer */
 .footer {
   text-align: center;

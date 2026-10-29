@@ -122,6 +122,9 @@ def analyze_bill():
     document_text = text[:5000]
 
     try:
+        import time
+        t0 = time.time()
+
         response = ollama.chat(
             model=MODEL,
             format="json",
@@ -131,6 +134,7 @@ def analyze_bill():
             ],
         )
 
+        elapsed = round(time.time() - t0, 1)
         response_text = response["message"]["content"].strip()
 
         try:
@@ -144,6 +148,7 @@ def analyze_bill():
             else:
                 return jsonify({"error": "Analysis failed to produce structured output.", "raw": response_text}), 500
 
+        result["_meta"] = {"model": MODEL, "elapsed_seconds": elapsed}
         return jsonify(result)
 
     except ollama.ResponseError as e:

@@ -196,6 +196,15 @@ export default function AnalysisResults({ data, onReset }) {
           </div>
         </div>
       )}
+
+      {/* Analysis metadata */}
+      {data._meta && (
+        <div className="analysis-meta">
+          <span className="meta-chip">⚡ {data._meta.model}</span>
+          <span className="meta-chip">🕐 {data._meta.elapsed_seconds}s</span>
+          <span className="meta-chip">🔒 Local · no data uploaded</span>
+        </div>
+      )}
     </>
   );
 }
