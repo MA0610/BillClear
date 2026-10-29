@@ -1,0 +1,4 @@
+ollama>=0.4.0
+flask>=3.0.0
+flask-cors>=4.0.0
+pdfplumber>=0.11.0

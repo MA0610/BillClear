@@ -1,0 +1,71 @@
+AETNA HEALTH INSURANCE
+Explanation of Benefits (EOB)
+This is not a bill. Keep this for your records.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MEMBER INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Member Name:    John Smith
+Member ID:      AET-8834729
+Group Number:   GRP-447823
+Plan:           Aetna PPO Gold
+Claim Number:   CLM-2024-09287634
+Date Processed: 09/28/2024
+
+Provider:       Valley Medical Center
+Provider NPI:   1234567890
+Date of Service: 09/15/2024
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Service Description      Code    Billed     Not Covered   Discount    Plan Paid    Your Cost
+─────────────────────────────────────────────────────────────────────────────────────────────
+ER Visit Level 4         99284   $2,850.00  $0.00         $1,140.00   $1,368.00    $342.00
+Metabolic Panel          80053     $425.00  $0.00           $170.00     $204.00     $51.00
+Complete Blood Count     85025     $180.00  $0.00            $72.00      $86.40     $21.60
+Chest X-Ray 2 Views      71046     $650.00  $0.00           $260.00     $312.00     $78.00
+IV Infusion Init Hour    96365     $640.00  $640.00           $0.00       $0.00      $0.00
+  Denial Reason: Duplicate service. CPT 96365 billed twice for same date; only one unit covered per visit.
+Physician Interp Fee     93000     $195.00  $0.00            $78.00      $93.60     $23.40
+─────────────────────────────────────────────────────────────────────────────────────────────
+TOTALS                           $4,940.00  $640.00       $1,720.00   $2,064.00    $516.00
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEDUCTIBLE & OUT-OF-POCKET STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Annual Deductible:           $1,500.00
+  Applied This Claim:          $516.00
+  Deductible Met (YTD):        $984.00
+  Deductible Remaining:        $516.00
+
+Out-of-Pocket Maximum:       $5,000.00
+  Applied This Claim:          $516.00
+  OOP Met (YTD):             $1,234.00
+  OOP Remaining:             $3,766.00
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. The $640.00 charge for IV Infusion (96365) was denied as a duplicate service.
+   Your provider billed this code twice for the same date. You should NOT be
+   responsible for this amount. If your provider bills you for the denied $640.00,
+   contact Aetna Member Services immediately.
+
+2. Your provider has agreed to accept the Aetna contracted rate. The $1,720.00
+   shown as "Discount" represents the difference between billed charges and the
+   contracted rate — you are not responsible for this amount.
+
+3. The $516.00 shown as "Your Cost" reflects your remaining deductible for this
+   plan year and is a legitimate patient responsibility.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUESTIONS?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Member Services: 1-800-AETNA-00 (1-800-238-6200)
+Online:          myaetna.com
+Hours:           Mon–Fri 8am–6pm local time
+
+To dispute a claim decision, submit a written appeal within 180 days to:
+Aetna Appeals, PO Box 14067, Lexington, KY 40512

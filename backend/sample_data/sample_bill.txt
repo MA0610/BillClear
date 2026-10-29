@@ -1,0 +1,52 @@
+VALLEY MEDICAL CENTER
+1234 Healthcare Blvd, Los Angeles, CA 90001
+Tel: (213) 555-0100  |  Fax: (213) 555-0199
+Tax ID: 95-1234567
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PATIENT STATEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Patient Name:     John Smith
+Account Number:   VMC-7829034
+Date of Birth:    03/14/1988
+Date of Service:  09/15/2024
+Statement Date:   10/01/2024
+
+Insurance:        Aetna PPO
+Member ID:        AET-8834729
+Group Number:     GRP-447823
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SERVICES RENDERED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Date        Description                         CPT Code    Qty    Unit Price    Amount
+─────────────────────────────────────────────────────────────────────────────────────
+09/15/24    Emergency Room Visit (Level 4)       99284       1      $2,850.00    $2,850.00
+09/15/24    Comprehensive Metabolic Panel        80053       1        $425.00      $425.00
+09/15/24    Complete Blood Count w/ Diff         85025       1        $180.00      $180.00
+09/15/24    Chest X-Ray, 2 Views                 71046       1        $650.00      $650.00
+09/15/24    IV Infusion, Initial Hour            96365       1        $320.00      $320.00
+09/15/24    IV Infusion, Initial Hour            96365       1        $320.00      $320.00
+09/15/24    Physician Interpretation Fee         93000       1        $195.00      $195.00
+─────────────────────────────────────────────────────────────────────────────────────
+
+                                                Total Billed:               $4,940.00
+                                    Insurance Payment (Aetna):             -$2,847.00
+                                         Insurance Adjustment:               -$892.00
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                              AMOUNT DUE:                  $1,201.00
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PAYMENT DUE BY: 10/31/2024
+
+Payment options:
+  Online:   valleymedical.com/pay
+  Phone:    (213) 555-0150
+  Mail:     Valley Medical Center, PO Box 44521, Los Angeles, CA 90001
+
+NOTICE: Unpaid balances may be referred to a collection agency after 90 days.
+
+Questions about this bill? Call our billing department at (213) 555-0150
+Mon–Fri 8am–5pm PST
