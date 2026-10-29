@@ -26,7 +26,17 @@ export default function App() {
         });
       }
 
-      const data = await response.json();
+      let data;
+      const rawText = await response.text();
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(
+          response.ok
+            ? "Server returned an unexpected response. Is the backend running?"
+            : `Server error (${response.status}). Is the Flask backend running on port 5001?`
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Analysis failed. Please try again.");
