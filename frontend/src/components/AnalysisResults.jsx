@@ -43,20 +43,22 @@ function FlagItem({ flag }) {
   );
 }
 
-function calcPotentialSavings(charges) {
-  if (!charges?.length) return 0;
+function calcDuplicates(charges) {
+  if (!charges?.length) return { savings: 0, duplicateCodes: new Set() };
   const seen = {};
+  const duplicateCodes = new Set();
   let savings = 0;
   for (const c of charges) {
     if (!c.code) continue;
     const key = c.code.trim().toUpperCase();
     if (seen[key]) {
       savings += c.billed_amount || 0;
+      duplicateCodes.add(key);
     } else {
       seen[key] = true;
     }
   }
-  return savings;
+  return { savings, duplicateCodes };
 }
 
 function UnknownDocument({ summary, onReset }) {
@@ -88,7 +90,7 @@ export default function AnalysisResults({ data, onReset }) {
   }
 
   const warningCount = (data.flags || []).filter((f) => f.severity === "warning").length;
-  const potentialSavings = calcPotentialSavings(data.charges);
+  const { savings: potentialSavings, duplicateCodes } = calcDuplicates(data.charges);
 
   return (
     <>
@@ -131,6 +133,14 @@ export default function AnalysisResults({ data, onReset }) {
               : "—"}
           </div>
           <div className="responsibility-note">Patient responsibility</div>
+          {potentialSavings > 0 && data.patient_responsibility?.amount != null && (
+            <div className="corrected-amount">
+              <span className="corrected-label">If resolved:</span>
+              <span className="corrected-value">
+                ${Number(data.patient_responsibility.amount - potentialSavings).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -172,17 +182,23 @@ export default function AnalysisResults({ data, onReset }) {
                 </tr>
               </thead>
               <tbody>
-                {data.charges.map((c, i) => (
-                  <tr key={i}>
-                    <td>{c.description}</td>
-                    <td>
-                      {c.code ? <span className="code-chip">{c.code}</span> : <span className="amount-null">—</span>}
-                    </td>
-                    <td className="right amount">{fmt(c.billed_amount)}</td>
-                    <td className="right amount">{fmt(c.insurance_paid)}</td>
-                    <td className="right amount">{fmt(c.patient_owes)}</td>
-                  </tr>
-                ))}
+                {data.charges.map((c, i) => {
+                  const isDuplicate = c.code && duplicateCodes.has(c.code.trim().toUpperCase());
+                  return (
+                    <tr key={i} className={isDuplicate ? "row-duplicate" : ""}>
+                      <td>
+                        {c.description}
+                        {isDuplicate && <span className="duplicate-tag">duplicate</span>}
+                      </td>
+                      <td>
+                        {c.code ? <span className="code-chip">{c.code}</span> : <span className="amount-null">—</span>}
+                      </td>
+                      <td className="right amount">{fmt(c.billed_amount)}</td>
+                      <td className="right amount">{fmt(c.insurance_paid)}</td>
+                      <td className="right amount">{fmt(c.patient_owes)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

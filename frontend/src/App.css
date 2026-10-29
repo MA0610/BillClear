@@ -494,6 +494,30 @@ body {
   line-height: 1.5;
 }
 
+.corrected-amount {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.corrected-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--green);
+}
+
+.corrected-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: -0.3px;
+}
+
 /* Section cards */
 .section-card {
   background: white;
@@ -590,6 +614,23 @@ body {
 .charges-table tr:last-child td { border-bottom: none; }
 
 .charges-table tr:hover td { background: var(--gray-50); }
+
+.row-duplicate td { background: var(--yellow-light) !important; }
+
+.duplicate-tag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--yellow);
+  background: #fef3c7;
+  border: 1px solid var(--yellow-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  vertical-align: middle;
+}
 
 .code-chip {
   font-family: "Menlo", monospace;
