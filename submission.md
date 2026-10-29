@@ -98,7 +98,7 @@ If the core analysis is unreliable — if the model regularly misidentifies amou
 1. User uploads a bill (PDF or .txt) or pastes bill text
 2. Flask backend extracts text and sends it to a local model (llama3.2 via Ollama) with a structured prompt
 3. The model returns a JSON object: document type, patient responsibility, line-item charges, flags, questions to ask, and next steps
-4. The backend checks every dollar amount against the source document and corrects any the model got wrong
+4. The backend checks every dollar amount and flag against the source document and corrects any the model got wrong
 5. React frontend renders the analysis with clear visual hierarchy — the "you owe" number is prominent, warnings are surfaced first
 
 ### Representative use case
@@ -126,11 +126,13 @@ If the core analysis is unreliable — if the model regularly misidentifies amou
 | PDF text extraction (pdfplumber) | Implemented |
 | Plain text / paste input | Implemented |
 | Structured LLM analysis (JSON, llama3.2 via Ollama) | Implemented |
-| Duplicate charge detection | Implemented via prompt |
+| Duplicate charge detection | Implemented (prompt + checked in code) |
+| Denied charge warnings | Implemented |
 | Amount validation against source document | Implemented |
+| Flag validation against source document | Implemented |
 | Drag-and-drop file upload | Implemented |
 | Save as PDF export | Implemented |
-| Automated test suite (92 pytest tests) | Implemented |
+| Automated test suite (104 pytest tests) | Implemented |
 | OCR for scanned/photographed bills | Deferred |
 | EOB ↔ bill cross-reference | Deferred |
 | CPT code database validation | Deferred |
@@ -145,10 +147,12 @@ I iterated on the prompt over ~6 attempts to get consistent structured JSON outp
 **The model is not trusted with numbers.** A small model reads prose well but makes predictable mistakes with amounts: writing `1.201` for $1,201, putting a claim total on a single line item, or swapping the "insurance paid" and "you owe" columns. Since a wrong "you owe" figure is exactly the failure that would make this tool harmful (see *What would make this not worth solving*), the backend checks the model's output against the source document before showing it:
 
 - Patient responsibility is replaced with the total stated in the document when one can be found.
-- Each charge is matched to the document row carrying its CPT code. When the table has a header, each field is read from its column; otherwise the value must appear on that row, and if it doesn't, it's shown as "—" rather than a wrong number.
+- Each charge is matched to the document row carrying its CPT code. When the table has a header, each field is read from its column, matched by name ("Plan Paid", "Your Cost") rather than spacing because PDF text extraction collapses columns to single spaces. Otherwise the value must appear on that row, and if it doesn't, it's shown as "—" rather than a wrong number.
 - Thousands-separator mistakes are rescaled and small misreadings are snapped to the nearest amount on the row.
 
-This splits the work the way the rule-based alternative suggested: the LLM handles language and judgment, and deterministic code handles the numbers.
+**Flags are checked too.** The prompt asks for specific flags, but the model doesn't follow those rules reliably. On a test EOB it reported a duplicate charge that didn't exist and a "large balance" of $88.20, and missed the one real problem: a denied charge. A false duplicate flag is especially harmful because it tells the patient to accuse their provider of an error. So the backend enforces the rules itself: duplicate flags need a code actually repeated on the bill (or the document saying "duplicate"), the large-balance flag only appears over $500, and every charge the document says was denied gets a warning not to pay it before calling the insurer.
+
+This splits the work the way the rule-based alternative suggested: the LLM handles language and judgment, and deterministic code handles the numbers and the rules.
 
 ### Connection to the broader opportunity
 
@@ -164,7 +168,9 @@ The first step — reliable single-bill analysis — is the prerequisite for eve
 
 **What I checked:** Every component was run in the browser. The analysis prompt was tested against both sample documents and invalid inputs before finalizing. The duplicate charge detection was specifically verified — it was the core hypothesis of the prototype.
 
-On top of manual testing, a 92-test pytest suite covers the amount-parsing and validation logic (66 tests, no model needed) and runs both sample documents end-to-end through the real model (26 tests), checking document type, patient responsibility, per-line amounts, the denied charge, and flags. The suite caught two real bugs: the model labeling the EOB as a medical bill, and the $516 claim total being shown as the ER visit's "you owe" instead of $342. Both are fixed, and the second is covered by a regression test.
+On top of manual testing, a 104-test pytest suite covers the amount-parsing, amount-validation, and flag-validation logic (78 tests, no model needed) and runs both text samples end-to-end through the real model (26 tests), checking document type, patient responsibility, per-line amounts, the denied charge, and flags. The suite caught two real bugs: the model labeling the EOB as a medical bill, and the $516 claim total being shown as the ER visit's "you owe" instead of $342.
+
+I also tested the PDF upload path with a synthetic PDF EOB (`sample_eob_urgent_care.pdf`). That surfaced three more problems: every line's "paid" and "you owe" values shifted one column left (PDF extraction loses column spacing), false duplicate and large-balance flags, and an explanation describing 20% coinsurance as "20% of the total cost" instead of the allowed amount. All five bugs are fixed, and each one that the code (rather than the prompt) fixes is covered by a regression test.
 
 **Parts reused from prior work:** None. This project was built from scratch for this submission.
 

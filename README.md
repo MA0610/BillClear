@@ -79,10 +79,10 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The suite has 92 tests:
+The suite has 104 tests:
 
-- **Unit tests** (`tests/test_utils.py`) — amount parsing, thousands-separator fixes, and row-level validation against the sample documents. No Ollama needed.
-- **API tests** (`tests/test_api.py`) — health check and input validation, plus end-to-end analysis of both sample documents through the real model. Tests marked `ai` require Ollama running with `llama3.2`.
+- **Unit tests** (`tests/test_utils.py`, 78 tests) — amount parsing, thousands-separator fixes, row-level validation, and flag checks against the sample documents, including the PDF. No Ollama needed.
+- **API tests** (`tests/test_api.py`, 26 tests) — health check and input validation, plus end-to-end analysis of both text samples through the real model. Tests marked `ai` require Ollama running with `llama3.2`.
 
 To run only the tests that don't need Ollama:
 
@@ -109,7 +109,7 @@ pytest -m "not ai"
 
 ## Sample Data
 
-Two synthetic documents are in `backend/sample_data/`. Use the sample buttons in the app to load them instantly.
+Three synthetic documents are in `backend/sample_data/`. Use the sample buttons in the app to load the two text samples instantly; upload the PDF with **Upload file**.
 
 ### `sample_bill.txt` — ER bill with duplicate charge
 An emergency room visit billed to Aetna PPO. CPT code `96365` (IV Infusion) appears twice for the same date — a common billing error.
@@ -128,6 +128,15 @@ The corresponding EOB for the same visit. The insurer denied the duplicate IV In
 - Document type: EOB
 - Flag: denied duplicate — patient should not pay the $640 if billed by provider
 - Deductible status and next steps
+
+### `sample_eob_urgent_care.pdf` — Summit Health Plan EOB (PDF)
+An urgent care visit for a fictional insurer, laid out as a real PDF table. Exercises the PDF upload path: pdfplumber collapses the table's columns to single spaces, so amounts are matched to columns by header name. The insurer denied a $45 Dexamethasone Injection (`J1100`).
+
+**Expected output:**
+- Document type: EOB
+- Patient responsibility: $88.20 (20% coinsurance on the allowed amount)
+- Charges: 5 line items; `J1100` shows $0.00 paid and $0.00 owed
+- Flag: one warning for the denied `J1100` charge — no duplicate or large-balance flags
 
 ### Invalid input
 Click the **Invalid input** sample button to demo the edge case. Pasting non-medical text returns a `"This doesn't look like a medical bill"` card instead of broken results.
@@ -151,6 +160,12 @@ backend validates amounts against the source document:
     │  - fixes thousands-separator mistakes (1.201 → 1201)
     │  - replaces patient responsibility with the document's stated total
     │  - checks each charge against the row carrying its CPT code
+    │    (columns matched by header name, e.g. "Plan Paid", "Your Cost")
+    ▼
+backend validates flags:
+    │  - drops duplicate flags with no repeated code or "duplicate" in the document
+    │  - large-balance flag only when patient responsibility is over $500
+    │  - adds a warning for every charge the document says was denied
     ▼
 backend attaches _meta (model, elapsed time) → returns to frontend
     ▼
@@ -197,6 +212,7 @@ OLLAMA_MODEL=llama3.1:8b python app.py
 | Save as PDF export | Implemented |
 | Invalid input handling | Implemented |
 | Amount validation against source document | Implemented |
+| Flag validation (duplicates, large balance, denied charges) | Implemented |
 | Automated test suite (pytest) | Implemented |
 | Sample data (synthetic, labeled) | Included |
 | OCR for scanned/photographed bills | Not implemented |
