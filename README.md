@@ -2,7 +2,7 @@
 
 ## Overview
 
-The purpose of this application (BillClear) is to have it read a medical bill or Explanation of Benefits (EOB) and have it return what you owe, what the charges are, billing errors, and suggestions of things to ask billing. The application uses a local model (for this case study I used llama3.2 via Ollama) which allows for this app to run both without an API key and not having medical data leaving the user's computer.
+The purpose of this application (BillClear) is to have it read a medical bill or Explanation of Benefits (EOB) and have it return what you owe, what the charges are, billing errors, and suggestions of things to ask billing. The application supports two modes: a local mode using llama3.2 via Ollama (no API key required, data never leaves your machine) and a cloud mode using OpenRouter for the live demo deployment.
 
 ---
 
@@ -50,12 +50,13 @@ I would choose to stop if the model's structured output was unreliable to the po
 
 - Python 3.10+
 - Node.js 18+
-- [Ollama](https://ollama.com) with `llama3.2` pulled
 
-Install Ollama and pull the model:
+**For local mode (default):** [Ollama](https://ollama.com) with `llama3.2` pulled
 ```bash
 ollama pull llama3.2
 ```
+
+**For cloud mode:** An [OpenRouter](https://openrouter.ai) API key with `LLM_PROVIDER=openrouter` set
 
 ---
 
@@ -239,9 +240,17 @@ frontend renders: savings banner, summary, flags, charges table,
                   questions (copy button), next steps, PDF export
 ```
 
-To use a different Ollama model, set the environment variable before starting the backend:
+**Provider toggle** — set `LLM_PROVIDER` before starting the backend:
+
 ```bash
-OLLAMA_MODEL=llama3.1:8b python app.py
+# Local (default)
+python app.py
+
+# OpenRouter
+LLM_PROVIDER=openrouter OPENROUTER_API_KEY=your_key python app.py
+
+# Groq
+LLM_PROVIDER=groq GROQ_API_KEY=your_key python app.py
 ```
 
 ---
@@ -251,10 +260,13 @@ OLLAMA_MODEL=llama3.1:8b python app.py
 **Backend**
 | Package | Purpose |
 |---|---|
-| `ollama` | Ollama Python client |
+| `ollama` | Ollama Python client (local mode) |
+| `groq` | Groq API client (cloud mode) |
+| `openai` | OpenAI-compatible client used for OpenRouter (cloud mode) |
 | `flask` | HTTP server |
 | `flask-cors` | Cross-origin requests from frontend |
 | `pdfplumber` | Extract text from PDF uploads |
+| `gunicorn` | Production WSGI server |
 | `pytest` (dev) | Test suite |
 
 **Frontend**

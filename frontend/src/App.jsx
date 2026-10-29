@@ -67,10 +67,6 @@ export default function App() {
             </div>
           </div>
           <span className="tagline">Medical bill decoder</span>
-          <div className="privacy-badge">
-            <span className="privacy-icon">🔒</span>
-            Runs locally — your bill never leaves your computer
-          </div>
         </div>
       </header>
 
@@ -116,7 +112,10 @@ export default function App() {
           Always verify findings with your provider and insurer.
           <br />
           <span style={{ marginTop: 4, display: "block" }}>
-            Powered by Ollama (llama3.2) · Runs 100% locally · Prototype — synthetic sample data included
+            {results?._meta?.provider === "openrouter"
+              ? `Powered by OpenRouter (${results._meta.model}) · Prototype — synthetic sample data included`
+              : "Powered by Ollama (llama3.2) · Runs 100% locally · Prototype — synthetic sample data included"
+            }
           </span>
         </p>
       </footer>

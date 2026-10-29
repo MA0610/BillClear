@@ -4,7 +4,7 @@
 
 ## Overview
 
-The purpose of this application (BillClear) is to have it read a medical bill or Explanation of Benefits (EOB) and have it return what you owe, what the charges are, billing errors, and suggestions of things to ask billing. The application uses a local model (for this case study I used llama3.2 via Ollama) which allows for this app to run both without an API key and not having medical data leaving the user's computer.
+The purpose of this application (BillClear) is to have it read a medical bill or Explanation of Benefits (EOB) and have it return what you owe, what the charges are, billing errors, and suggestions of things to ask billing. The application supports two modes: a local mode using llama3.2 via Ollama (no API key required, data never leaves your machine) and a cloud mode using OpenRouter, which powers the live demo. The backend has a provider toggle so the same codebase works in both environments.
 
 ---
 
@@ -52,7 +52,7 @@ I would choose to stop if the model's structured output was unreliable to the po
 
 ### Core workflow
 
-Upload a PDF, txt file, or paste in text and then have the Flask backend extract the text. From there the prompt will be sent to the local model (llama3.2 via Ollama) and from there the JSON response will be validated against the source document. The React frontend renders the charges table, flags, questions, and the next steps the users should take with billing.
+Upload a PDF, txt file, or paste in text and the Flask backend extracts the text. The prompt is sent to the configured LLM (llama3.2 via Ollama locally, or a Llama 3.1 model via OpenRouter on the live demo) and the JSON response is validated against the source document. The React frontend renders the charges table, flags, questions, and the next steps the user should take with billing. The footer shows which model and provider handled the analysis.
 
 ### Representative use case — ER bill with duplicate charge (`sample_bill.txt`)
 
