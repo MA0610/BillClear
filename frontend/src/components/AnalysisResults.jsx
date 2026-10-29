@@ -25,8 +25,25 @@ function FlagItem({ flag }) {
   );
 }
 
+function calcPotentialSavings(charges) {
+  if (!charges?.length) return 0;
+  const seen = {};
+  let savings = 0;
+  for (const c of charges) {
+    if (!c.code) continue;
+    const key = c.code.trim().toUpperCase();
+    if (seen[key]) {
+      savings += c.billed_amount || 0;
+    } else {
+      seen[key] = true;
+    }
+  }
+  return savings;
+}
+
 export default function AnalysisResults({ data, onReset }) {
   const warningCount = (data.flags || []).filter((f) => f.severity === "warning").length;
+  const potentialSavings = calcPotentialSavings(data.charges);
 
   return (
     <>
@@ -36,6 +53,19 @@ export default function AnalysisResults({ data, onReset }) {
           ← Analyze another
         </button>
       </div>
+
+      {/* Potential savings banner */}
+      {potentialSavings > 0 && (
+        <div className="savings-banner">
+          <div className="savings-amount">
+            ${Number(potentialSavings).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+          </div>
+          <div className="savings-text">
+            <strong>Potential overcharge detected</strong>
+            <span>Duplicate charge found — verify this amount before paying</span>
+          </div>
+        </div>
+      )}
 
       {/* Summary + responsibility */}
       <div className="summary-card">

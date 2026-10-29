@@ -326,6 +326,43 @@ body {
   color: var(--gray-400);
 }
 
+/* ── Savings banner ── */
+.savings-banner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius);
+  padding: 16px 24px;
+  margin-bottom: 16px;
+}
+
+.savings-amount {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+}
+
+.savings-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.savings-text strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.savings-text span {
+  font-size: 13px;
+  color: #166534;
+}
+
 /* ── Error ── */
 .error-card {
   background: var(--red-light);
