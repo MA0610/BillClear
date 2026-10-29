@@ -289,7 +289,7 @@ LLM_PROVIDER=groq GROQ_API_KEY=your_key python app.py
 | Save as PDF export | Implemented | Patients need a record to bring to a call |
 | Test suite (104 tests, pytest) | Implemented | Validation logic is complex enough that manual testing wouldn't catch regressions |
 | Optical Character Recognition for scanned bills | Deferred | Requires a vision model which is out of scope and likely not needed since digital bills are text-based |
-| EOB & bill cross-reference | Deferred | Needs two documents uploaded and cross-referenced — too complex for a prototype |
+| EOB & bill cross-reference | Deferred | Needs two documents uploaded and cross-referenced which was too complex for a prototype |
 | CPT code database validation | Deferred | Requires a licensed or public CPT dataset and matching logic which is out of scope given time frame |
 | Appeal letter generator | Deferred | High value but requires more time and may be a bad idea to put total trust into an LLM |
 
