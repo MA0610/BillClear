@@ -281,16 +281,16 @@ LLM_PROVIDER=groq GROQ_API_KEY=your_key python app.py
 
 | Feature | Status | Why |
 |---|---|---|
-| PDF & text extraction | Implemented | Core input path — without it the tool only works for copy-pasted text |
+| PDF & text extraction | Implemented | Core input path, without it the tool only works for copy-pasted text |
 | Structured JSON analysis via local LLM | Implemented | The central problem-solving step |
-| Amount validation against source document | Implemented | LLM was misformatting numbers — without this the application has no reason to exist |
+| Amount validation against source document | Implemented | LLM was misformatting numbers, without this the application has no reason to exist |
 | Duplicate, denial, and large-balance flags | Implemented | Highest-value insight for the patient |
 | One-click copy of questions to ask billing | Implemented | Reduces friction so users can put it in their notes for later |
 | Save as PDF export | Implemented | Patients need a record to bring to a call |
 | Test suite (104 tests, pytest) | Implemented | Validation logic is complex enough that manual testing wouldn't catch regressions |
-| Optical Character Recognition for scanned bills | Deferred | Requires a vision model — out of scope and likely not needed since digital bills are text-based |
+| Optical Character Recognition for scanned bills | Deferred | Requires a vision model which is out of scope and likely not needed since digital bills are text-based |
 | EOB & bill cross-reference | Deferred | Needs two documents uploaded and cross-referenced — too complex for a prototype |
-| CPT code database validation | Deferred | Requires a licensed or public CPT dataset and matching logic — out of scope given time frame |
+| CPT code database validation | Deferred | Requires a licensed or public CPT dataset and matching logic which is out of scope given time frame |
 | Appeal letter generator | Deferred | High value but requires more time and may be a bad idea to put total trust into an LLM |
 
 ---
