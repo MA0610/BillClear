@@ -9,12 +9,19 @@ import re
 app = Flask(__name__)
 CORS(app)
 
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "ollama").lower()  # "ollama" or "groq"
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "ollama").lower()  # "ollama", "groq", or "openrouter"
 
 if LLM_PROVIDER == "groq":
     from groq import Groq
     _groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+elif LLM_PROVIDER == "openrouter":
+    from openai import OpenAI
+    _openrouter_client = OpenAI(
+        api_key=os.environ.get("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+    )
+    MODEL = os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
 else:
     import ollama as _ollama
     MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
@@ -24,6 +31,14 @@ def call_llm(messages):
     """Call the configured LLM provider and return the response text."""
     if LLM_PROVIDER == "groq":
         response = _groq_client.chat.completions.create(
+            model=MODEL,
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=messages,
+        )
+        return response.choices[0].message.content.strip()
+    elif LLM_PROVIDER == "openrouter":
+        response = _openrouter_client.chat.completions.create(
             model=MODEL,
             temperature=0,
             response_format={"type": "json_object"},
