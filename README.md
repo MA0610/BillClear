@@ -58,7 +58,7 @@ ollama serve
 ```bash
 python app.py
 ```
-Runs on `http://localhost:5000`
+Runs on `http://localhost:5001`
 
 **3. Frontend** (from `frontend/`):
 ```bash
@@ -149,7 +149,7 @@ Click the **Invalid input** sample button to demo the edge case. Pasting non-med
 frontend (React/Vite :5173)
     │  POST /api/analyze
     ▼
-backend (Flask :5000)
+backend (Flask :5001)
     │  Extract text from PDF (pdfplumber) or accept raw text
     │  Build structured prompt
     ▼
