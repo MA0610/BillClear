@@ -2,182 +2,102 @@
 
 ---
 
-## Choose your problem
+## Overview
 
-### Three problems I considered
-
-**Problem 1 — Medical bills are incomprehensible**
-
-I encountered this during a routine urgent care visit. After receiving both a hospital bill and an Explanation of Benefits (EOB) from my insurer, I had two documents using different codes, different dollar amounts, and no clear explanation of what I actually owed or why the numbers differed. I spent an hour cross-referencing CPT codes on Google before calling the billing department — and found a duplicate charge I wouldn't have caught otherwise.
-
-Who experiences it: virtually every American who receives healthcare. The problem isn't rare or edge-case; it's the default experience. A 2022 study by Patients for Fair Compensation found that 80% of medical bills contain at least one error, costing patients an estimated $68B in overpayments annually.
-
-What happens because it remains unsolved: patients overpay, miss billing errors, skip care because they don't understand costs, or get sent to collections on balances they shouldn't have owed.
+The purpose of this application (BillClear) is to have it read a medical bill or Explanation of Benefits (EOB) and have it return what you owe, what the charges are, billing errors, and suggestions of things to ask billing. The application uses a local model (for this case study I used llama3.2 via Ollama) which allows for this app to run both without an API key and not having medical data leaving the user's computer.
 
 ---
 
-**Problem 2 — Deployment configs drift from their documented state**
+## The Problems
 
-During work at a federal contractor, I built tooling that auto-generated deployment folders from client-supplied Helm charts. Before that tool existed, engineers manually reviewed each config — a slow, error-prone process that relied on institutional knowledge. Configs drift over time through hotfixes, manual overrides, and undocumented exceptions. The person who knows why a flag was set a certain way often isn't on the project anymore.
+### Medical billing errors *(chosen)*
 
-Who experiences it: platform engineers, DevOps teams, and contractors who inherit someone else's infrastructure.
+Medical bills and EOBs use a lot of different codes and a lot of numbers on top of other technical jargon. This makes it difficult for the average patient to make sure that they aren't getting overbilled due to duplicate charges or other billing issues. I chose to tackle this problem because having dealt with this in the past at places like urgent care billing me twice for something, I found this really hard to stop before I got charged. These bills can sometimes be a lot, especially under the circumstances of being sick.
 
-What happens: misconfigs cause deployment failures, create security gaps, and block junior engineers who can't distinguish intentional choices from accidents.
+### Expense report categorization
 
----
+Finance teams at mid-size companies spend hours manually reviewing and re-categorizing employee expenses submitted with very vague descriptions. Errors can create audit risk and delay things like reimbursements. Existing tools flag the anomalies but don't really explain the policy violation or even say how to fix it. I encountered this through a family member who has complained about these tools in the past.
 
-**Problem 3 — English pronunciation feedback is inaccessible and expensive**
+### Lease agreement review
 
-During my ACM research on phoneme detection for children's speech, I noticed how few affordable tools exist for adult English Language Learners seeking honest, specific pronunciation feedback. Apps like Duolingo are gamified but shallow. Human speech therapists charge $100–250 per hour. Most learners have no feedback loop beyond their own ears.
+Renters sign leases without understanding non-standard clauses like subletting restrictions, maintenance responsibilities, and more. First time renters such as many of my friends have struggled with fully understanding certain parts of their lease agreement. If untreated this problem can lead to unexpected costs and disputes later down the line.
 
-Who experiences it: adult immigrants, international students, non-native English speakers entering professional environments.
+### Why I chose medical billing
 
-What happens: slow pronunciation acquisition, lack of confidence in professional settings, and no scalable path to improvement without expensive 1:1 coaching.
-
----
-
-### Why I chose Problem 1
-
-I chose the medical billing problem because the evidence is direct and the people affected have no good recourse today.
-
-**What I observed:** I've personally received bills I couldn't parse without research. The specific duplicate charge in the sample data (CPT `96365` billed twice) reflects a real pattern — IV infusion codes are among the most commonly duplicated charges in ER settings.
-
-**What I'm assuming:** That the pattern holds broadly — my one experience is consistent with published research on billing error rates, but I haven't audited a large sample of bills myself.
-
-**Why it beats the alternatives:** Problem 2 (Helm config review) is real and I could build a strong prototype, but it affects a narrow audience (DevOps engineers) and existing tools partially address it. Problem 3 has the strongest human story but is too close to work I've already published — I'd be retreading my own research rather than solving a new problem.
-
-The medical bill problem is urgent (people are actively losing money), broad (affects nearly everyone), and underserved at the consumer level. Most tools in this space are either insurance-company portals with obvious conflicts of interest, or expensive health advocates. There's no simple, accessible tool that just reads a bill and explains it.
+Medical costs can be really expensive and complicated. Things such as the different codes and just the sheer amount of terms and values on a bill can make it difficult to spot mistakes which take money out of the patient's pocket. And even though I am usually very good at catching things, these bills can be very difficult to read and given how expensive medical is I thought it was worth trying to mitigate.
 
 ---
 
-## Develop your approach
+## Develop My Approach
 
-### How people handle it today
+### How people handle it today & what a better outcome looks like
 
-Most patients do one of three things:
-1. Pay the bill without reviewing it
-2. Call the billing department and ask someone to explain it to them (wait times: 30–90 minutes)
-3. Hire a patient advocate or billing specialist (cost: 15–35% of recovered savings)
+Most patients usually either pay the bill and have to call the provider to fix the billing issue (takes a very long time), or they have to carefully read every single statement to fix mistakes that aren't even the patient's fault. A better patient outcome would involve the patient uploading a bill and getting a plain-English summary where every charge is listed and what they need to say to billing in order to get the issues resolved. This would allow for the patient to better understand what they are being billed for and have a better chance at catching these pricing errors.
 
-The few who dig in manually search CPT codes on CMS.gov or Google, cross-reference their EOB, and hope they catch errors before the collections window closes.
+### What my proposed direction looks like
 
-### What a better outcome looks like
+My solution involves local LLM analysis with document-level validation. The model (llama3.2 via Ollama) extracts structured data (charges, amounts, flags), and the backend cross-checks every number against the source text before returning results to the user. I added this level of verification because when working on this the local model would sometimes mess up values occasionally (like instead of 200.50 it might become 200.40), so I added code safeguards to ensure that values stayed correct. The model is mainly used for language understanding while the code portion handles the validation.
 
-A patient uploads their bill and gets back, in under a minute: a plain-English summary of every charge, the total they actually owe, flagged anomalies with specific actions to take, and the exact questions to ask when they call billing. No medical knowledge required. No waiting on hold.
+### Other things considered
 
-### Proposed direction and first step
+I considered trying to rely entirely on adjusting the prompts to keep values consistent, but from experience I noticed models can sometimes mess numbers up in predictable ways and didn't want to risk it.
 
-The direction is an AI-powered document analyzer: extract text from the bill, send it to a language model with a structured prompt, return a JSON object the UI can render clearly.
+### What would make me stop
 
-The **smallest useful first step** is getting the core analysis right: can the model reliably identify a duplicate charge and recommend calling billing? I started there — the sample data was designed to test this specifically — before building the full UI around it.
-
-### Alternative I considered
-
-**A rule-based CPT code parser** — build a database of common codes and flag anomalies algorithmically. This would be more deterministic and auditable than an LLM. I didn't choose it because: (1) the scope of CPT codes is enormous and changes annually; (2) the plain-English explanation layer — "this charge is for an IV drip given in your first hour in the ER" — requires language generation that a lookup table can't provide; (3) for a prototype within a 4-hour window, an LLM approach gets to the useful output faster.
-
-A production system would likely combine both: structured rules for known error patterns, LLM for explanation and edge cases.
-
-### What I'd need to learn
-
-- What percentage of bills arrive as scanned images vs. text-layer PDFs (determines whether OCR is required in v1)
-- Whether patients are more likely to catch errors before or after receiving a collections notice (determines urgency framing)
-- Whether providers' billing departments respond differently when patients cite specific CPT codes vs. general complaints
-
-### What would make this not worth solving
-
-If the core analysis is unreliable — if the model regularly misidentifies amounts, invents flags that don't exist, or gives advice that increases patient liability — the prototype would cause more harm than the status quo. The right test: give it ten real bills and check accuracy on the "amount you owe" figure specifically. If that number is wrong more than 20% of the time without clear caveats, the trust problem is unsolvable without a fundamentally different approach.
+I would choose to stop if the model's structured output was unreliable to the point that the validation layer couldn't cover it. So if the model hallucinated things like CPT codes that didn't appear in the bill at all, this would make using the model more of a liability than a help — wrong information is way worse than no information at all. In testing I was able to get the model to consistently pull real codes and real amounts, and as stated previously I made sure to use verification in the backend to make it reliable.
 
 ---
 
 ## Prototype
 
-**BillClear** — a web application that reads medical bills and EOBs and tells patients exactly what they owe and what to do about it.
-
 ### Core workflow
 
-1. User uploads a bill (PDF or .txt) or pastes bill text
-2. Flask backend extracts text and sends it to a local model (llama3.2 via Ollama) with a structured prompt
-3. The model returns a JSON object: document type, patient responsibility, line-item charges, flags, questions to ask, and next steps
-4. The backend checks every dollar amount and flag against the source document and corrects any the model got wrong
-5. React frontend renders the analysis with clear visual hierarchy — the "you owe" number is prominent, warnings are surfaced first
+Upload a PDF, txt file, or paste in text and then have the Flask backend extract the text. From there the prompt will be sent to the local model (llama3.2 via Ollama) and from there the JSON response will be validated against the source document. The React frontend renders the charges table, flags, questions, and the next steps the users should take with billing.
 
-### Representative use case
+### Representative use case — ER bill with duplicate charge (`sample_bill.txt`)
 
-**Input:** `sample_bill.txt` — an ER visit billed to Aetna PPO totaling $4,940 billed, $1,201 patient responsibility. CPT `96365` (IV Infusion) appears twice for the same date.
+For the use case I used synthetic data of an ER bill with a duplicate charge.
 
-**Expected output:**
-- Patient responsibility: $1,201
-- Flag (warning): duplicate IV Infusion charge — CPT `96365` billed twice, ~$320 overcharge
-- Action: "Call billing at (213) 555-0150, reference account VMC-7829034, ask them to remove the duplicate 96365 line item dated 09/15/24"
-- Questions: "Can you confirm CPT 96365 was administered twice, or is this a billing error?"
+Input: ER visit billed to Aetna. CPT 96365 (IV Infusion) appears twice.
 
-### Difficult / invalid input case
+Expected output:
+- Patient responsibility: $1,201.00
+- Duplicate flag
+- Corrected amount if resolved: $881.00
+- Question asking billing to confirm CPT 96365 was performed twice
 
-**Input:** Random text ("The quick brown fox jumps over the lazy dog") or a very short string (<30 characters)
+### Difficult use case — EOB with denial (`sample_eob.txt`)
 
-**Expected output:**
-- 400 error: "Document appears empty or too short. Please check your upload."
-- Or: `document_type: "unknown"` with summary: "This does not appear to be a medical bill or EOB..."
+For this case the document has a denial where a duplicate service was billed twice. The model sees that $0 is owed on that line. The validation layer reads the denial note, adds a warning flag, and tells the patient not to pay if the provider ends up billing them separately. The model alone would probably miss the distinction between "denied so you owe nothing" and "covered" — which is why this is the difficult case.
 
-### What's implemented vs. deferred
+### Invalid input
 
-| Feature | Status |
-|---|---|
-| PDF text extraction (pdfplumber) | Implemented |
-| Plain text / paste input | Implemented |
-| Structured LLM analysis (JSON, llama3.2 via Ollama) | Implemented |
-| Duplicate charge detection | Implemented (prompt + checked in code) |
-| Denied charge warnings | Implemented |
-| Amount validation against source document | Implemented |
-| Flag validation against source document | Implemented |
-| Drag-and-drop file upload | Implemented |
-| Save as PDF export | Implemented |
-| Automated test suite (104 pytest tests) | Implemented |
-| OCR for scanned/photographed bills | Deferred |
-| EOB ↔ bill cross-reference | Deferred |
-| CPT code database validation | Deferred |
-| Appeal letter generator | Deferred |
+Pasting non-medical text (like a news article) returns a clear message: "This doesn't look like a medical bill or EOB." This stops a broken analysis card from being displayed to the user.
 
-### How AI is used
+### Implemented vs. Deferred
 
-A local model (`llama3.2` via Ollama) does the analytical work: it reads the bill, identifies each charge in plain English, flags potential errors, extracts patient responsibility, and generates the questions and next steps. Running locally means no API key and no medical data leaves the user's machine. Temperature is pinned to 0 so the same document always produces the same analysis.
-
-I iterated on the prompt over ~6 attempts to get consistent structured JSON output. The key design decision was asking for `null` on missing numeric fields rather than `0`, so the UI can distinguish "insurance paid nothing" from "insurance payment not listed."
-
-**The model is not trusted with numbers.** A small model reads prose well but makes predictable mistakes with amounts: writing `1.201` for $1,201, putting a claim total on a single line item, or swapping the "insurance paid" and "you owe" columns. Since a wrong "you owe" figure is exactly the failure that would make this tool harmful (see *What would make this not worth solving*), the backend checks the model's output against the source document before showing it:
-
-- Patient responsibility is replaced with the total stated in the document when one can be found.
-- Each charge is matched to the document row carrying its CPT code. When the table has a header, each field is read from its column, matched by name ("Plan Paid", "Your Cost") rather than spacing because PDF text extraction collapses columns to single spaces. Otherwise the value must appear on that row, and if it doesn't, it's shown as "—" rather than a wrong number.
-- Thousands-separator mistakes are rescaled and small misreadings are snapped to the nearest amount on the row.
-
-**Flags are checked too.** The prompt asks for specific flags, but the model doesn't follow those rules reliably. On a test EOB it reported a duplicate charge that didn't exist and a "large balance" of $88.20, and missed the one real problem: a denied charge. A false duplicate flag is especially harmful because it tells the patient to accuse their provider of an error. So the backend enforces the rules itself: duplicate flags need a code actually repeated on the bill (or the document saying "duplicate"), the large-balance flag only appears over $500, and every charge the document says was denied gets a warning not to pay it before calling the insurer.
-
-This splits the work the way the rule-based alternative suggested: the LLM handles language and judgment, and deterministic code handles the numbers and the rules.
-
-### Connection to the broader opportunity
-
-The first step — reliable single-bill analysis — is the prerequisite for everything more valuable: cross-referencing an EOB against the bill it corresponds to, building a longitudinal record of a patient's billing history, auto-generating dispute letters, or integrating with insurance portals directly. The prototype validates that the core analysis is good enough to be useful before any of that infrastructure is built.
+| Feature | Status | Why |
+|---|---|---|
+| PDF & text extraction | Implemented | Core input path — without it the tool only works for copy-pasted text |
+| Structured JSON analysis via local LLM | Implemented | The central problem-solving step |
+| Amount validation against source document | Implemented | LLM was misformatting numbers — without this the application has no reason to exist |
+| Duplicate, denial, and large-balance flags | Implemented | Highest-value insight for the patient |
+| One-click copy of questions to ask billing | Implemented | Reduces friction so users can put it in their notes for later |
+| Save as PDF export | Implemented | Patients need a record to bring to a call |
+| Test suite (104 tests, pytest) | Implemented | Validation logic is complex enough that manual testing wouldn't catch regressions |
+| Optical Character Recognition for scanned bills | Deferred | Requires a vision model — out of scope and likely not needed since digital bills are text-based |
+| EOB & bill cross-reference | Deferred | Needs two documents uploaded and cross-referenced — too complex for a prototype |
+| CPT code database validation | Deferred | Requires a licensed or public CPT dataset and matching logic — out of scope given time frame |
+| Appeal letter generator | Deferred | High value but would require more time and may be generally a bad idea to put total trust into an LLM |
 
 ---
 
-## Time and AI usage
+## AI Usage
 
-**Time spent:** ~4 hours
+I used Claude Code to help scaffold and write a majority of the boilerplate for the frontend and backend code. I chose the tech stack and made all the architecture and design choices for the core logic behind the application as well as what I thought should and shouldn't be in scope. I iterated on the prompt structure to produce consistent JSON outputs, verified the sample documents which I had Claude make, and tested edge cases on the frontend manually. The validation layer took a majority of my time in order to get consistently right. The problem framing, solution direction, prompt design, and decision about what to validate through code and what to trust the model with are all my own. I would be more than happy to talk more about how I productively use LLMs to improve my workflow!
 
-**AI tools used:** Claude Code (Anthropic) for scaffolding and writing the majority of the code. I reviewed all generated code, iterated on the analysis prompt through multiple test runs, verified that sample data produced the expected flags, and tested edge cases manually.
+---
 
-**What I did myself:** I designed the system architecture — a local model behind a Flask API with a React frontend, so no medical data leaves the user's machine — along with the problem framing, solution direction, and prompt design. I also directed the testing and validation work, including deciding which issues to fix.
+## Time Spent
 
-**What I checked:** Every component was run in the browser. The analysis prompt was tested against both sample documents and invalid inputs before finalizing. The duplicate charge detection was specifically verified — it was the core hypothesis of the prototype.
-
-On top of manual testing, a 104-test pytest suite covers the amount-parsing, amount-validation, and flag-validation logic (78 tests, no model needed) and runs both text samples end-to-end through the real model (26 tests), checking document type, patient responsibility, per-line amounts, the denied charge, and flags. The suite caught two real bugs: the model labeling the EOB as a medical bill, and the $516 claim total being shown as the ER visit's "you owe" instead of $342.
-
-I also tested the PDF upload path with a synthetic PDF EOB (`sample_eob_urgent_care.pdf`). That surfaced three more problems: every line's "paid" and "you owe" values shifted one column left (PDF extraction loses column spacing), false duplicate and large-balance flags, and an explanation describing 20% coinsurance as "20% of the total cost" instead of the allowed amount. All five bugs are fixed, and each one that the code (rather than the prompt) fixes is covered by a regression test.
-
-**Parts reused from prior work:** None. This project was built from scratch for this submission.
-
-**What I'd investigate next:**
-1. OCR support — most paper bills are scanned, not digitized
-2. EOB ↔ bill cross-reference — compare insurance's version against the provider's
-3. CPT code database — flag when a code doesn't match the stated diagnosis
-4. Appeal letter generator — auto-draft a dispute letter when a flag is found
+~3 hours 45 minutes
