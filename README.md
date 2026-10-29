@@ -70,6 +70,28 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
+## Running tests
+
+From `backend/` with the venv activated:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+The suite has 92 tests:
+
+- **Unit tests** (`tests/test_utils.py`) — amount parsing, thousands-separator fixes, and row-level validation against the sample documents. No Ollama needed.
+- **API tests** (`tests/test_api.py`) — health check and input validation, plus end-to-end analysis of both sample documents through the real model. Tests marked `ai` require Ollama running with `llama3.2`.
+
+To run only the tests that don't need Ollama:
+
+```bash
+pytest -m "not ai"
+```
+
+---
+
 ## Usage
 
 1. Upload a `.pdf` or `.txt` bill, or paste bill text directly
@@ -123,7 +145,12 @@ backend (Flask :5000)
     │  Build structured prompt
     ▼
 Ollama (llama3.2, localhost:11434)
-    │  Returns JSON analysis via format="json"
+    │  Returns JSON analysis via format="json" (temperature 0)
+    ▼
+backend validates amounts against the source document:
+    │  - fixes thousands-separator mistakes (1.201 → 1201)
+    │  - replaces patient responsibility with the document's stated total
+    │  - checks each charge against the row carrying its CPT code
     ▼
 backend attaches _meta (model, elapsed time) → returns to frontend
     ▼
@@ -147,6 +174,7 @@ OLLAMA_MODEL=llama3.1:8b python app.py
 | `flask` | HTTP server |
 | `flask-cors` | Cross-origin requests from frontend |
 | `pdfplumber` | Extract text from PDF uploads |
+| `pytest` (dev) | Test suite |
 
 **Frontend**
 | Package | Purpose |
@@ -168,6 +196,8 @@ OLLAMA_MODEL=llama3.1:8b python app.py
 | Questions to ask (one-click copy) | Implemented |
 | Save as PDF export | Implemented |
 | Invalid input handling | Implemented |
+| Amount validation against source document | Implemented |
+| Automated test suite (pytest) | Implemented |
 | Sample data (synthetic, labeled) | Included |
 | OCR for scanned/photographed bills | Not implemented |
 | EOB ↔ bill cross-reference | Not implemented |
@@ -191,4 +221,4 @@ OLLAMA_MODEL=llama3.1:8b python app.py
 
 ## AI usage
 
-Claude Code was used to scaffold and write the majority of the frontend and backend code. I reviewed all output, iterated on the prompt to produce consistent structured JSON, verified sample data produced the expected flags, and tested edge cases manually. The problem framing, solution direction, and prompt design are my own.
+Claude Code was used to scaffold and write the majority of the frontend and backend code. I reviewed all output, iterated on the prompt to produce consistent structured JSON, verified sample data produced the expected flags, and tested edge cases manually. Model output is checked by an automated pytest suite (see [Running tests](#running-tests)). The problem framing, solution direction, and prompt design are my own.

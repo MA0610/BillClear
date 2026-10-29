@@ -96,9 +96,10 @@ If the core analysis is unreliable — if the model regularly misidentifies amou
 ### Core workflow
 
 1. User uploads a bill (PDF or .txt) or pastes bill text
-2. Flask backend extracts text and sends it to Claude with a structured prompt
-3. Claude returns a JSON object: document type, patient responsibility, line-item charges, flags, questions to ask, and next steps
-4. React frontend renders the analysis with clear visual hierarchy — the "you owe" number is prominent, warnings are surfaced first
+2. Flask backend extracts text and sends it to a local model (llama3.2 via Ollama) with a structured prompt
+3. The model returns a JSON object: document type, patient responsibility, line-item charges, flags, questions to ask, and next steps
+4. The backend checks every dollar amount against the source document and corrects any the model got wrong
+5. React frontend renders the analysis with clear visual hierarchy — the "you owe" number is prominent, warnings are surfaced first
 
 ### Representative use case
 
@@ -124,10 +125,12 @@ If the core analysis is unreliable — if the model regularly misidentifies amou
 |---|---|
 | PDF text extraction (pdfplumber) | Implemented |
 | Plain text / paste input | Implemented |
-| Structured Claude analysis (JSON) | Implemented |
-| Duplicate charge detection | Implemented via Claude |
+| Structured LLM analysis (JSON, llama3.2 via Ollama) | Implemented |
+| Duplicate charge detection | Implemented via prompt |
+| Amount validation against source document | Implemented |
 | Drag-and-drop file upload | Implemented |
-| Prompt caching (system prompt) | Implemented |
+| Save as PDF export | Implemented |
+| Automated test suite (92 pytest tests) | Implemented |
 | OCR for scanned/photographed bills | Deferred |
 | EOB ↔ bill cross-reference | Deferred |
 | CPT code database validation | Deferred |
@@ -135,9 +138,17 @@ If the core analysis is unreliable — if the model regularly misidentifies amou
 
 ### How AI is used
 
-Claude (`claude-sonnet-4-6`) does the analytical work: it reads the bill, identifies each charge in plain English, flags potential errors, calculates patient responsibility, and generates the questions and next steps. The system prompt is cached with `cache_control: ephemeral` to reduce latency on repeated calls.
+A local model (`llama3.2` via Ollama) does the analytical work: it reads the bill, identifies each charge in plain English, flags potential errors, extracts patient responsibility, and generates the questions and next steps. Running locally means no API key and no medical data leaves the user's machine. Temperature is pinned to 0 so the same document always produces the same analysis.
 
 I iterated on the prompt over ~6 attempts to get consistent structured JSON output. The key design decision was asking for `null` on missing numeric fields rather than `0`, so the UI can distinguish "insurance paid nothing" from "insurance payment not listed."
+
+**The model is not trusted with numbers.** A small model reads prose well but makes predictable mistakes with amounts: writing `1.201` for $1,201, putting a claim total on a single line item, or swapping the "insurance paid" and "you owe" columns. Since a wrong "you owe" figure is exactly the failure that would make this tool harmful (see *What would make this not worth solving*), the backend checks the model's output against the source document before showing it:
+
+- Patient responsibility is replaced with the total stated in the document when one can be found.
+- Each charge is matched to the document row carrying its CPT code. When the table has a header, each field is read from its column; otherwise the value must appear on that row, and if it doesn't, it's shown as "—" rather than a wrong number.
+- Thousands-separator mistakes are rescaled and small misreadings are snapped to the nearest amount on the row.
+
+This splits the work the way the rule-based alternative suggested: the LLM handles language and judgment, and deterministic code handles the numbers.
 
 ### Connection to the broader opportunity
 
@@ -149,9 +160,11 @@ The first step — reliable single-bill analysis — is the prerequisite for eve
 
 **Time spent:** ~3.5 hours
 
-**AI tools used:** Claude Code (Anthropic) for scaffolding and writing the majority of the code. I reviewed all generated code, iterated on the Claude prompt through multiple test runs, verified that sample data produced the expected flags, and tested edge cases manually.
+**AI tools used:** Claude Code (Anthropic) for scaffolding and writing the majority of the code. I reviewed all generated code, iterated on the analysis prompt through multiple test runs, verified that sample data produced the expected flags, and tested edge cases manually.
 
 **What I checked:** Every component was run in the browser. The analysis prompt was tested against both sample documents and invalid inputs before finalizing. The duplicate charge detection was specifically verified — it was the core hypothesis of the prototype.
+
+On top of manual testing, a 92-test pytest suite covers the amount-parsing and validation logic (66 tests, no model needed) and runs both sample documents end-to-end through the real model (26 tests), checking document type, patient responsibility, per-line amounts, the denied charge, and flags. The suite caught two real bugs: the model labeling the EOB as a medical bill, and the $516 claim total being shown as the ER visit's "you owe" instead of $342. Both are fixed, and the second is covered by a regression test.
 
 **Parts reused from prior work:** None. This project was built from scratch for this submission.
 
