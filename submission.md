@@ -162,7 +162,7 @@ The first step — reliable single-bill analysis — is the prerequisite for eve
 
 ## Time and AI usage
 
-**Time spent:** ~3.5 hours
+**Time spent:** ~4 hours
 
 **AI tools used:** Claude Code (Anthropic) for scaffolding and writing the majority of the code. I reviewed all generated code, iterated on the analysis prompt through multiple test runs, verified that sample data produced the expected flags, and tested edge cases manually.
 
