@@ -5,6 +5,7 @@ import pdfplumber
 import io
 import json
 import os
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -40,6 +41,84 @@ def normalize_amounts(result):
     for charge in result.get("charges") or []:
         for field in ("billed_amount", "insurance_paid", "patient_owes"):
             charge[field] = fix_amount(charge.get(field))
+
+    return result
+
+
+def parse_doc_amounts(text):
+    """Extract every dollar amount present in the document as a set of floats."""
+    amounts = set()
+    for m in re.findall(r'\$\s*([\d,]+(?:\.\d{1,2})?)', text):
+        try:
+            amounts.add(round(float(m.replace(',', '')), 2))
+        except ValueError:
+            pass
+    return amounts
+
+
+def parse_doc_responsibility(text):
+    """
+    Regex-scan the document for the canonical 'amount you owe' figure.
+    Returns a float if found, else None.
+    """
+    patterns = [
+        r'AMOUNT\s+DUE\s*[:\-]?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)',
+        r'Amount\s+Due\s*[:\-]?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)',
+        r'TOTAL\s+DUE\s*[:\-]?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)',
+        r'Balance\s+Due\s*[:\-]?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)',
+        r'Patient\s+Responsibility\s*[:\-]?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)',
+        r'YOUR?\s+COST\s*[:\-]?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)',   # EOB
+        r'Your\s+Cost\s*\$?\s*([\d,]+(?:\.\d{1,2})?)',              # EOB table total
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            try:
+                return round(float(m.group(1).replace(',', '')), 2)
+            except ValueError:
+                pass
+    return None
+
+
+def snap_to_document(val, doc_amounts):
+    """
+    If val is not in the document's known amounts, find the closest
+    document amount within 1% (min $1) and return it instead.
+    Returns val unchanged if already correct or no close match found.
+    """
+    if val is None:
+        return val
+    rounded = round(val, 2)
+    if rounded in doc_amounts:
+        return val
+    tolerance = max(1.0, val * 0.01)
+    close = [a for a in doc_amounts if abs(a - val) <= tolerance]
+    if close:
+        return min(close, key=lambda a: abs(a - val))
+    return val
+
+
+def validate_against_document(result, raw_text):
+    """
+    Cross-check the model's extracted amounts against the source document.
+    1. Correct patient_responsibility if it doesn't match the document total.
+    2. Snap each charge amount to the nearest value actually in the document.
+    """
+    doc_amounts = parse_doc_amounts(raw_text)
+    doc_responsibility = parse_doc_responsibility(raw_text)
+
+    # Fix patient responsibility
+    if isinstance(result.get("patient_responsibility"), dict):
+        pr = result["patient_responsibility"]
+        model_amount = pr.get("amount")
+        if doc_responsibility is not None and model_amount is not None:
+            if abs(model_amount - doc_responsibility) > 0.5:
+                pr["amount"] = doc_responsibility
+
+    # Snap individual charge amounts to values present in the document
+    for charge in result.get("charges") or []:
+        for field in ("billed_amount", "insurance_paid", "patient_owes"):
+            charge[field] = snap_to_document(charge.get(field), doc_amounts)
 
     return result
 
@@ -181,6 +260,7 @@ def analyze_bill():
                 return jsonify({"error": "Analysis failed to produce structured output.", "raw": response_text}), 500
 
         result = normalize_amounts(result)
+        result = validate_against_document(result, document_text)
         result["_meta"] = {"model": MODEL, "elapsed_seconds": elapsed}
         return jsonify(result)
 
