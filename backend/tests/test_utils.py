@@ -9,7 +9,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
-from app import fix_amount, normalize_amounts, parse_doc_amounts, parse_doc_responsibility, snap_to_document, validate_against_document, line_amounts, map_row_columns, find_charge_rows
+from app import fix_amount, normalize_amounts, parse_doc_amounts, parse_doc_responsibility, snap_to_document, validate_against_document, line_amounts, map_row_columns, find_charge_rows, validate_flags
 
 SAMPLE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_data")
 
@@ -298,6 +298,25 @@ class TestRowHelpers:
         mapping = map_row_columns(lines, idx, line_amounts(lines[idx]))
         assert mapping == {"billed_amount": 2850.0}
 
+    def test_maps_single_spaced_header(self):
+        # PDF text extraction collapses column gaps to single spaces
+        lines = [
+            "Service Description Code Billed Not Covered Discount Plan Paid Your Cost",
+            "Office Visit, Level 4 99214 $310.00 $0.00 $124.00 $148.80 $37.20",
+        ]
+        mapping = map_row_columns(lines, 1, line_amounts(lines[1]))
+        assert mapping == {"billed_amount": 310.0, "insurance_paid": 148.8, "patient_owes": 37.2}
+
+    def test_header_label_count_must_match_amounts(self):
+        # A prose line mentioning "billed" between rows must not be taken as the header
+        lines = [
+            "Billed Plan Paid Your Cost",
+            "Denial reason: billed twice",
+            "X-Ray 71046 $650.00 $312.00 $78.00",
+        ]
+        mapping = map_row_columns(lines, 2, line_amounts(lines[2]))
+        assert mapping == {"billed_amount": 650.0, "insurance_paid": 312.0, "patient_owes": 78.0}
+
     def test_no_header_returns_empty_mapping(self):
         lines = ["ER Visit 99284 $2,850.00 $342.00"]
         assert map_row_columns(lines, 0, line_amounts(lines[0])) == {}
@@ -365,9 +384,123 @@ class TestChargeRowValidation:
         assert c["insurance_paid"] == 0.0
         assert c["patient_owes"] == 2850.0
 
+    def test_pdf_eob_shifted_columns_corrected(self):
+        # Regression: on the PDF EOB the model shifted every value one column
+        # left (paid=Discount, owes=Plan Paid) and all of them are on the row.
+        import pdfplumber
+        with pdfplumber.open(os.path.join(SAMPLE_DIR, "sample_eob_urgent_care.pdf")) as pdf:
+            text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+        result = {"patient_responsibility": {"amount": 88.2}, "charges": [
+            {"code": "99214", "billed_amount": 310.0, "insurance_paid": 124.0, "patient_owes": 148.8},
+            {"code": "J1100", "billed_amount": 45.0, "insurance_paid": 45.0, "patient_owes": 0.0},
+        ]}
+        office, denied = validate_against_document(result, text)["charges"]
+        assert (office["insurance_paid"], office["patient_owes"]) == (148.8, 37.2)
+        assert (denied["insurance_paid"], denied["patient_owes"]) == (0.0, 0.0)
+
     def test_code_not_in_document_falls_back_to_document_snap(self):
         c = self._validate(
             {"code": "00000", "billed_amount": 2840.0, "insurance_paid": None, "patient_owes": None},
             "sample_eob.txt",
         )
         assert c["billed_amount"] == 2850.0
+
+
+# ─────────────────────────────────────────────
+# validate_flags
+# ─────────────────────────────────────────────
+
+def pdf_sample_text(fname):
+    import pdfplumber
+    with pdfplumber.open(os.path.join(SAMPLE_DIR, fname)) as pdf:
+        return "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+
+def flag(issue, explanation="", severity="warning"):
+    return {"severity": severity, "issue": issue, "explanation": explanation, "action": "call"}
+
+
+def issues(result):
+    return [f["issue"] for f in result["flags"]]
+
+
+PDF_CHARGES = [
+    {"code": "99214", "description": "Office Visit", "billed_amount": 310.0, "insurance_paid": 148.8, "patient_owes": 37.2},
+    {"code": "87880", "description": "Rapid Strep Test", "billed_amount": 65.0, "insurance_paid": 31.2, "patient_owes": 7.8},
+    {"code": "J1100", "description": "Dexamethasone Injection", "billed_amount": 45.0, "insurance_paid": 0.0, "patient_owes": 0.0},
+]
+
+
+class TestValidateFlags:
+    def test_pdf_eob_false_flags_removed_and_denial_added(self):
+        # Regression: exact flags llama3.2 produced for sample_eob_urgent_care.pdf
+        result = {
+            "patient_responsibility": {"amount": 88.2},
+            "charges": [dict(c) for c in PDF_CHARGES],
+            "flags": [
+                flag("Duplicate Charges", "The same CPT code (99214) was billed twice for the same date."),
+                flag("Large Balance", "Your patient responsibility is $88.20, which is over $500.", "info"),
+            ],
+        }
+        out = validate_flags(result, pdf_sample_text("sample_eob_urgent_care.pdf"))
+        assert issues(out) == ["Denied charge: Dexamethasone Injection (J1100)"]
+        assert "$45.00" in out["flags"][0]["explanation"]
+
+    def test_bill_duplicate_flag_kept(self):
+        result = {
+            "patient_responsibility": {"amount": 1201.0},
+            "charges": [{"code": "96365", "billed_amount": 320.0}, {"code": "96365", "billed_amount": 320.0}],
+            "flags": [flag("Duplicate charge", "CPT 96365 billed twice")],
+        }
+        out = validate_flags(result, read_sample("sample_bill.txt"))
+        assert "Duplicate charge" in issues(out)
+
+    def test_bill_duplicate_flag_added_when_missing(self):
+        result = {
+            "patient_responsibility": {"amount": 1201.0},
+            "charges": [{"code": "96365", "billed_amount": 320.0}, {"code": "96365", "billed_amount": 320.0}],
+            "flags": [],
+        }
+        out = validate_flags(result, read_sample("sample_bill.txt"))
+        assert "Duplicate charge: CPT 96365" in issues(out)
+
+    def test_eob_duplicate_flag_kept_when_document_mentions_duplicate(self):
+        # The text EOB lists 96365 once but its denial reason says "Duplicate service"
+        result = {
+            "patient_responsibility": {"amount": 516.0},
+            "charges": [{"code": "96365", "description": "IV Infusion", "billed_amount": 640.0, "insurance_paid": 0.0}],
+            "flags": [flag("Duplicate IV infusion denied", "96365 was denied as a duplicate")],
+        }
+        out = validate_flags(result, read_sample("sample_eob.txt"))
+        assert issues(out) == ["Duplicate IV infusion denied", "Large balance"]
+
+    def test_large_balance_flag_added_over_threshold(self):
+        result = {"patient_responsibility": {"amount": 1201.0}, "charges": [], "flags": []}
+        out = validate_flags(result, "AMOUNT DUE: $1,201.00")
+        assert issues(out) == ["Large balance"]
+        assert out["flags"][0]["severity"] == "info"
+
+    def test_large_balance_flag_kept_over_threshold(self):
+        result = {"patient_responsibility": {"amount": 1201.0}, "charges": [],
+                  "flags": [flag("Large Balance", "Ask about payment plans", "info")]}
+        out = validate_flags(result, "AMOUNT DUE: $1,201.00")
+        assert issues(out) == ["Large Balance"]
+
+    def test_denied_flag_not_duplicated_when_model_already_flagged(self):
+        result = {
+            "patient_responsibility": {"amount": 88.2},
+            "charges": [dict(c) for c in PDF_CHARGES],
+            "flags": [flag("Denied injection", "J1100 was denied by your plan")],
+        }
+        out = validate_flags(result, pdf_sample_text("sample_eob_urgent_care.pdf"))
+        assert issues(out) == ["Denied injection"]
+
+    def test_warnings_sorted_before_info(self):
+        result = {"patient_responsibility": {"amount": 1201.0}, "charges": [],
+                  "flags": [flag("Large Balance", "payment plan", "info"), flag("Something odd")]}
+        out = validate_flags(result, "")
+        assert [f["severity"] for f in out["flags"]] == ["warning", "info"]
+
+    def test_handles_missing_flags_and_responsibility(self):
+        out = validate_flags({"charges": []}, "")
+        assert out["flags"] == []
