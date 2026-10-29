@@ -11,6 +11,38 @@ CORS(app)
 
 MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 
+
+def fix_amount(val):
+    """Fix amounts where the model used a dot as a thousands separator (e.g. 1.201 → 1201.0)."""
+    if val is None:
+        return val
+    try:
+        f = float(val)
+        # Heuristic: medical bills are rarely under $10.
+        # If the value looks like X.YYY (3 decimal places) and is under 10,
+        # it's likely a thousands-separated number like 1.201 meaning 1201.
+        s = str(val)
+        if "." in s:
+            decimals = s.split(".")[1]
+            if len(decimals) == 3 and f < 10:
+                return f * 1000
+        return f
+    except (TypeError, ValueError):
+        return val
+
+
+def normalize_amounts(result):
+    """Walk the result and fix any misformatted monetary amounts."""
+    if isinstance(result.get("patient_responsibility"), dict):
+        pr = result["patient_responsibility"]
+        pr["amount"] = fix_amount(pr.get("amount"))
+
+    for charge in result.get("charges") or []:
+        for field in ("billed_amount", "insurance_paid", "patient_owes"):
+            charge[field] = fix_amount(charge.get(field))
+
+    return result
+
 SYSTEM_PROMPT = """You are a medical billing expert helping patients understand their medical bills and Explanation of Benefits (EOB) documents. Your goal is to translate confusing medical billing language into plain English, identify potential errors or issues, and tell patients exactly what they need to do.
 
 Medical bills often contain:
@@ -70,9 +102,9 @@ Return ONLY a valid JSON object with this exact structure. No markdown fences, n
 IMPORTANT - Before writing the flags array, scan the charges list for these issues:
 1. DUPLICATE CHARGES: If the same CPT code appears more than once on the same date, that is a duplicate. Add a warning flag for it.
 2. LARGE BALANCES: If patient_responsibility amount is over $500, add an info flag suggesting they request an itemized bill and ask about payment plans.
-3. DENIED CHARGES: If any charge shows $0 insurance paid with no adjustment, flag it.
 
 Rules:
+- ALL monetary amounts must be plain decimal numbers. Write 1201.00 not 1,201 or 1.201. Never use commas or periods as thousands separators. A bill for twelve hundred dollars is 1200.00, not 1.200 or 1,200.
 - Use null for missing numeric values, not 0
 - flags array should be empty [] only if truly no issues exist
 - Be specific — use actual dollar amounts and codes from the document
@@ -148,6 +180,7 @@ def analyze_bill():
             else:
                 return jsonify({"error": "Analysis failed to produce structured output.", "raw": response_text}), 500
 
+        result = normalize_amounts(result)
         result["_meta"] = {"model": MODEL, "elapsed_seconds": elapsed}
         return jsonify(result)
 

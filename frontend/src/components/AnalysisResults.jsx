@@ -193,7 +193,7 @@ export default function AnalysisResults({ data, onReset }) {
                     <tr key={i} className={isDuplicate ? "row-duplicate" : ""}>
                       <td>
                         {c.description}
-                        {isDuplicate && <span className="duplicate-tag">duplicate</span>}
+                        {isDuplicate && <span className="duplicate-tag" style={{ marginLeft: 8 }}>duplicate</span>}
                       </td>
                       <td>
                         {c.code ? <span className="code-chip">{c.code}</span> : <span className="amount-null">—</span>}
