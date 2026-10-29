@@ -161,6 +161,13 @@ export default function UploadZone({ onAnalyze, loading }) {
           >
             Insurance EOB
           </button>
+          <button
+            className="sample-btn"
+            style={{ color: "var(--gray-400)", background: "var(--gray-50)", borderColor: "var(--gray-200)" }}
+            onClick={() => { setTab("paste"); setText("The quick brown fox jumps over the lazy dog. This is not a medical document."); }}
+          >
+            Invalid input
+          </button>
         </div>
 
         <button

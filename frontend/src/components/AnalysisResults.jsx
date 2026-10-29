@@ -59,7 +59,34 @@ function calcPotentialSavings(charges) {
   return savings;
 }
 
+function UnknownDocument({ summary, onReset }) {
+  return (
+    <>
+      <div className="results-header">
+        <h2>Analysis complete</h2>
+        <button className="reset-btn" onClick={onReset}>← Analyze another</button>
+      </div>
+      <div className="unknown-card">
+        <div className="unknown-icon">🤔</div>
+        <h3>This doesn't look like a medical bill</h3>
+        <p>{summary || "The document you uploaded doesn't appear to be a medical bill or Explanation of Benefits."}</p>
+        <p className="unknown-hint">
+          Try uploading a hospital bill, doctor's invoice, or EOB from your insurance company.
+          Text-layer PDFs and plain text files work best.
+        </p>
+        <button className="analyze-btn" style={{ marginTop: 0 }} onClick={onReset}>
+          Try a different document
+        </button>
+      </div>
+    </>
+  );
+}
+
 export default function AnalysisResults({ data, onReset }) {
+  if (data.document_type === "unknown") {
+    return <UnknownDocument summary={data.summary} onReset={onReset} />;
+  }
+
   const warningCount = (data.flags || []).filter((f) => f.severity === "warning").length;
   const potentialSavings = calcPotentialSavings(data.charges);
 
