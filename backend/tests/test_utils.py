@@ -9,7 +9,14 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
-from app import fix_amount, normalize_amounts, parse_doc_amounts, parse_doc_responsibility, snap_to_document, validate_against_document
+from app import fix_amount, normalize_amounts, parse_doc_amounts, parse_doc_responsibility, snap_to_document, validate_against_document, line_amounts, map_row_columns, find_charge_rows
+
+SAMPLE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_data")
+
+
+def read_sample(fname):
+    with open(os.path.join(SAMPLE_DIR, fname), encoding="utf-8") as f:
+        return f.read()
 
 
 # ─────────────────────────────────────────────
@@ -265,3 +272,102 @@ class TestValidateAgainstDocument:
         result = {"charges": []}
         out = validate_against_document(result, "AMOUNT DUE: $100.00")
         assert "charges" in out
+
+
+# ─────────────────────────────────────────────
+# Row-level charge validation
+# ─────────────────────────────────────────────
+
+class TestRowHelpers:
+    def test_line_amounts_in_order(self):
+        assert line_amounts("ER  $2,850.00  $0.00  $342.00") == [2850.0, 0.0, 342.0]
+
+    def test_find_charge_rows_requires_whole_code_and_amounts(self):
+        lines = ["99284 $10.00", "199284 $20.00", "CPT 99284 no amounts", "99284-25 $30.00"]
+        assert find_charge_rows(lines, "99284") == [0]
+
+    def test_maps_eob_columns(self):
+        lines = read_sample("sample_eob.txt").splitlines()
+        idx = find_charge_rows(lines, "99284")[0]
+        mapping = map_row_columns(lines, idx, line_amounts(lines[idx]))
+        assert mapping == {"billed_amount": 2850.0, "insurance_paid": 1368.0, "patient_owes": 342.0}
+
+    def test_maps_bill_amount_column_to_billed(self):
+        lines = read_sample("sample_bill.txt").splitlines()
+        idx = find_charge_rows(lines, "99284")[0]
+        mapping = map_row_columns(lines, idx, line_amounts(lines[idx]))
+        assert mapping == {"billed_amount": 2850.0}
+
+    def test_no_header_returns_empty_mapping(self):
+        lines = ["ER Visit 99284 $2,850.00 $342.00"]
+        assert map_row_columns(lines, 0, line_amounts(lines[0])) == {}
+
+
+class TestChargeRowValidation:
+    def _validate(self, charge, sample):
+        result = {"patient_responsibility": {"amount": 516.0}, "charges": [charge]}
+        return validate_against_document(result, read_sample(sample))["charges"][0]
+
+    def test_eob_total_misplaced_on_line_is_corrected(self):
+        # Regression: model put the $516 claim total on the ER line; $516 is
+        # in the document, so document-wide snapping let it through.
+        c = self._validate(
+            {"code": "99284", "billed_amount": 2850.0, "insurance_paid": 1368.0, "patient_owes": 516.0},
+            "sample_eob.txt",
+        )
+        assert c["patient_owes"] == 342.0
+
+    def test_eob_swapped_columns_corrected(self):
+        c = self._validate(
+            {"code": "80053", "billed_amount": 425.0, "insurance_paid": 51.0, "patient_owes": 204.0},
+            "sample_eob.txt",
+        )
+        assert c["insurance_paid"] == 204.0
+        assert c["patient_owes"] == 51.0
+
+    def test_eob_correct_values_unchanged(self):
+        c = self._validate(
+            {"code": "71046", "billed_amount": 650.0, "insurance_paid": 312.0, "patient_owes": 78.0},
+            "sample_eob.txt",
+        )
+        assert (c["billed_amount"], c["insurance_paid"], c["patient_owes"]) == (650.0, 312.0, 78.0)
+
+    def test_eob_denied_charge_zero_paid(self):
+        c = self._validate(
+            {"code": "96365", "billed_amount": 640.0, "insurance_paid": 0.0, "patient_owes": 0.0},
+            "sample_eob.txt",
+        )
+        assert c["insurance_paid"] == 0.0
+        assert c["patient_owes"] == 0.0
+
+    def test_eob_thousands_bug_on_row_rescaled(self):
+        c = self._validate(
+            {"code": "99284", "billed_amount": 2.85, "insurance_paid": 1368.0, "patient_owes": 342.0},
+            "sample_eob.txt",
+        )
+        assert c["billed_amount"] == 2850.0
+
+    def test_bill_value_not_on_row_is_cleared(self):
+        # Bill has no "you owe" column; $516-style values pulled from elsewhere are dropped
+        c = self._validate(
+            {"code": "80053", "billed_amount": 425.0, "insurance_paid": None, "patient_owes": 2850.0},
+            "sample_bill.txt",
+        )
+        assert c["billed_amount"] == 425.0
+        assert c["patient_owes"] is None
+
+    def test_bill_value_on_row_kept(self):
+        c = self._validate(
+            {"code": "99284", "billed_amount": 2850.0, "insurance_paid": 0.0, "patient_owes": 2850.0},
+            "sample_bill.txt",
+        )
+        assert c["billed_amount"] == 2850.0
+        assert c["insurance_paid"] == 0.0
+        assert c["patient_owes"] == 2850.0
+
+    def test_code_not_in_document_falls_back_to_document_snap(self):
+        c = self._validate(
+            {"code": "00000", "billed_amount": 2840.0, "insurance_paid": None, "patient_owes": None},
+            "sample_eob.txt",
+        )
+        assert c["billed_amount"] == 2850.0

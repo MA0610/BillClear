@@ -104,11 +104,112 @@ def snap_to_document(val, doc_amounts):
     return val
 
 
+# Header keywords for each charge field, checked in order (most specific first).
+FIELD_HEADERS = [
+    ("patient_owes", ("your cost", "you owe", "patient owes", "patient resp", "your resp", "balance")),
+    ("insurance_paid", ("plan paid", "insurance paid", "ins paid", "ins. paid", "paid")),
+    ("billed_amount", ("billed", "charge", "amount")),
+]
+
+
+def line_amounts(line):
+    """Dollar amounts on a single line, in left-to-right order."""
+    amounts = []
+    for m in re.findall(r'\$\s*([\d,]+(?:\.\d{1,2})?)', line):
+        try:
+            amounts.append(round(float(m.replace(',', '')), 2))
+        except ValueError:
+            pass
+    return amounts
+
+
+def header_field(label):
+    """Map a table column label to a charge field, or None if it isn't one we track."""
+    label = label.lower()
+    for field, keywords in FIELD_HEADERS:
+        if any(k in label for k in keywords):
+            return field
+    return None
+
+
+def map_row_columns(lines, row_idx, amounts):
+    """
+    Find the table header above a charge row and map each field to the amount
+    in its column. Amount columns are assumed to be the rightmost header columns.
+    Returns {field: amount}, empty if no usable header is found.
+    """
+    for i in range(row_idx - 1, max(-1, row_idx - 16), -1):
+        line = lines[i]
+        if '$' in line:
+            continue
+        columns = [c for c in re.split(r'\s{2,}', line.strip()) if c]
+        if len(columns) <= len(amounts):
+            continue
+        amount_columns = columns[-len(amounts):]
+        mapping = {}
+        for label, amount in zip(amount_columns, amounts):
+            field = header_field(label)
+            if field and field not in mapping:
+                mapping[field] = amount
+        if mapping:
+            return mapping
+    return {}
+
+
+def find_charge_rows(lines, code):
+    """Indexes of lines that mention this code as a whole word and contain dollar amounts."""
+    pattern = re.compile(rf'(?<![\w-]){re.escape(code)}(?![\w-])')
+    return [i for i, line in enumerate(lines) if pattern.search(line) and line_amounts(line)]
+
+
+def validate_charge(charge, lines, doc_amounts):
+    """
+    Check a charge's amounts against the document row(s) carrying its code.
+    - If the row's table header tells us which column a field is, use that value.
+    - Otherwise the value must appear on the row; if it doesn't, the model
+      likely pulled it from elsewhere (e.g. a total), so it's cleared to None.
+    - Charges whose code isn't found fall back to a document-wide snap.
+    """
+    code = (charge.get("code") or "").strip()
+    rows = find_charge_rows(lines, code) if code else []
+
+    if not rows:
+        for field in ("billed_amount", "insurance_paid", "patient_owes"):
+            charge[field] = snap_to_document(charge.get(field), doc_amounts)
+        return
+
+    row_amounts = set()
+    expected = {}
+    for idx in rows:
+        amounts = line_amounts(lines[idx])
+        row_amounts.update(amounts)
+        for field, amount in map_row_columns(lines, idx, amounts).items():
+            expected.setdefault(field, set()).add(amount)
+
+    for field in ("billed_amount", "insurance_paid", "patient_owes"):
+        val = charge.get(field)
+        if val is None:
+            continue
+        if field in expected:
+            snapped = snap_to_document(val, expected[field])
+            if round(snapped, 2) in expected[field]:
+                charge[field] = snapped
+            elif len(expected[field]) == 1:
+                charge[field] = next(iter(expected[field]))
+            else:
+                charge[field] = None
+        elif val == 0:
+            continue
+        else:
+            snapped = snap_to_document(val, row_amounts)
+            charge[field] = snapped if round(snapped, 2) in row_amounts else None
+
+
 def validate_against_document(result, raw_text):
     """
     Cross-check the model's extracted amounts against the source document.
     1. Correct patient_responsibility if it doesn't match the document total.
-    2. Snap each charge amount to the nearest value actually in the document.
+    2. Check each charge's amounts against its own row in the document.
     """
     doc_amounts = parse_doc_amounts(raw_text)
     doc_responsibility = parse_doc_responsibility(raw_text)
@@ -121,10 +222,10 @@ def validate_against_document(result, raw_text):
             if abs(model_amount - doc_responsibility) > 0.5:
                 pr["amount"] = doc_responsibility
 
-    # Snap individual charge amounts to values present in the document
+    # Check individual charge amounts against their rows in the document
+    lines = raw_text.splitlines()
     for charge in result.get("charges") or []:
-        for field in ("billed_amount", "insurance_paid", "patient_owes"):
-            charge[field] = snap_to_document(charge.get(field), doc_amounts)
+        validate_charge(charge, lines, doc_amounts)
 
     return result
 
