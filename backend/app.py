@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import ollama
 import pdfplumber
 import io
 import json
@@ -10,7 +9,35 @@ import re
 app = Flask(__name__)
 CORS(app)
 
-MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "ollama").lower()  # "ollama" or "groq"
+
+if LLM_PROVIDER == "groq":
+    from groq import Groq
+    _groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+else:
+    import ollama as _ollama
+    MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+
+
+def call_llm(messages):
+    """Call the configured LLM provider and return the response text."""
+    if LLM_PROVIDER == "groq":
+        response = _groq_client.chat.completions.create(
+            model=MODEL,
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=messages,
+        )
+        return response.choices[0].message.content.strip()
+    else:
+        response = _ollama.chat(
+            model=MODEL,
+            format="json",
+            options={"temperature": 0},
+            messages=messages,
+        )
+        return response["message"]["content"].strip()
 
 
 def fix_amount(val):
@@ -459,18 +486,13 @@ def analyze_bill():
         import time
         t0 = time.time()
 
-        response = ollama.chat(
-            model=MODEL,
-            format="json",
-            options={"temperature": 0},
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": ANALYSIS_PROMPT.format(document_text=document_text)},
-            ],
-        )
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": ANALYSIS_PROMPT.format(document_text=document_text)},
+        ]
+        response_text = call_llm(messages)
 
         elapsed = round(time.time() - t0, 1)
-        response_text = response["message"]["content"].strip()
 
         try:
             result = json.loads(response_text)
@@ -485,11 +507,9 @@ def analyze_bill():
 
         result = normalize_amounts(result)
         result = validate_against_document(result, document_text)
-        result["_meta"] = {"model": MODEL, "elapsed_seconds": elapsed}
+        result["_meta"] = {"model": MODEL, "provider": LLM_PROVIDER, "elapsed_seconds": elapsed}
         return jsonify(result)
 
-    except ollama.ResponseError as e:
-        return jsonify({"error": f"Ollama error: {str(e)}. Is Ollama running?"}), 502
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 

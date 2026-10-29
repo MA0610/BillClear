@@ -17,9 +17,9 @@ export default function App() {
       if (type === "file") {
         const form = new FormData();
         form.append("file", file);
-        response = await fetch("/api/analyze", { method: "POST", body: form });
+        response = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/analyze`, { method: "POST", body: form });
       } else {
-        response = await fetch("/api/analyze", {
+        response = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text }),
