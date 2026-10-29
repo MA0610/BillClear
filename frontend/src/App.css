@@ -59,6 +59,16 @@ body {
   gap: 10px;
 }
 
+.logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.logo-link:hover .logo-text { color: var(--blue); }
+.logo-link:hover .logo-icon { opacity: 0.85; }
+
 .logo-icon {
   width: 32px;
   height: 32px;

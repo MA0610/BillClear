@@ -50,9 +50,11 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="header-inner">
-          <div className="logo-icon">💊</div>
-          <div className="logo-text">
-            Bill<span>Clear</span>
+          <div className="logo-link" onClick={handleReset} title="Back to start">
+            <div className="logo-icon">💊</div>
+            <div className="logo-text">
+              Bill<span>Clear</span>
+            </div>
           </div>
           <span className="tagline">Medical bill decoder</span>
           <div className="privacy-badge">
