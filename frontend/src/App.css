@@ -517,6 +517,27 @@ body {
 .badge.warning { background: var(--yellow-light); color: var(--yellow); }
 .badge.red { background: var(--red-light); color: var(--red); }
 
+.copy-btn {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-500);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.copy-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.copy-btn.copied {
+  color: var(--green);
+  border-color: var(--green-border);
+  background: var(--green-light);
+}
+
 /* Charges table */
 .charges-table-wrap {
   overflow-x: auto;

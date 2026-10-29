@@ -1,3 +1,21 @@
+import { useState } from "react";
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button className={`copy-btn ${copied ? "copied" : ""}`} onClick={handleCopy}>
+      {copied ? "Copied!" : "Copy all"}
+    </button>
+  );
+}
+
 function fmt(val) {
   if (val === null || val === undefined) return <span className="amount-null">—</span>;
   return `$${Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -150,6 +168,7 @@ export default function AnalysisResults({ data, onReset }) {
           <div className="section-header">
             <span className="section-icon">💬</span>
             <h3>Questions to ask billing</h3>
+            <CopyButton text={data.questions_to_ask.map((q, i) => `${i + 1}. ${q}`).join("\n")} />
           </div>
           <div className="list-section">
             <ul>
